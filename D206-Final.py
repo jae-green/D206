@@ -160,10 +160,63 @@ print(numeric_subset_df['outage_sec_wk'].value_counts().head(10))
 
 
 
+# %% 
+# Treating Categorical Missing Values
+
+
+#First, encode all categorical values to numeric for imputation
+# Create an empty dictionary ordinal_enc_dict
+ordinal_enc_dict = {}
+
+for col_name in users:
+    # Create Ordinal encoder for col
+    ordinal_enc_dict[col_name] = OrdinalEncoder()
+    col = users[col_name]
+    
+    # Select non-null values of col
+    col_not_null = col[col.notnull()]
+    reshaped_vals = col_not_null.values.reshape(-1, 1)
+    encoded_vals = ordinal_enc_dict[col_name].fit_transform(reshaped_vals)
+    
+    # Store the values to non-null values of the column in users
+    users.loc[col.notnull(), col_name] = np.squeeze(encoded_vals)
+
+
+# Impute the encoded categories & transform back to category values
+# Create KNN imputer
+KNN_imputer = KNN()
+
+# Impute and round the users DataFrame
+users.iloc[:, :] = np.round(KNN_imputer.fit_transform(users))
+
+# Loop over the column names in users
+for col_name in users:
+    
+    # Reshape the data
+    reshaped = users[col_name].values.reshape(-1, 1)
+    
+    # Perform inverse transform of the ordinally encoded columns
+    users[col_name] = ordinal_enc_dict[col_name].inverse_transform(reshaped)
 
 
 
 
+
+# If using multiple imputation methods, compare plots to find best method
+# Plot graphs of imputed DataFrames and the complete case
+diabetes_cc['Skin_Fold'].plot(kind='kde', c='red', linewidth=3)
+diabetes_mean_imputed['Skin_Fold'].plot(kind='kde')
+diabetes_knn_imputed['Skin_Fold'].plot(kind='kde')
+diabetes_mice_imputed['Skin_Fold'].plot(kind='kde')
+
+# Create labels for the four DataFrames
+labels = ['Baseline (Complete Case)', 'Mean Imputation', 'KNN Imputation', 'MICE Imputation']
+plt.legend(labels)
+
+# Set the x-label as Skin Fold
+plt.xlabel('Skin Fold')
+
+plt.show()
 
 
 
@@ -212,7 +265,7 @@ boxplot = sb.boxplot(x='equip_failure_yr', data=raw_df)
 
 
 # Create copy of data set to perform remaining cleaning steps on
-clean_df = pd.copy(df)
+clean_df = raw_df.copy(deep=True)
 
 # Convert zip code to string and fill missing chars with '0'
 clean_df.zip = clean_df.zip.astype(str).str[:-2].str.pad(5,fillchar='0')
