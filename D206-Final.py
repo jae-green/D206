@@ -153,41 +153,59 @@ df_imputed['phone_service'] = df_imputed['phone_service'].fillna(df_imputed['pho
 df_imputed['tech_support'] = df_imputed['tech_support'].fillna(df_imputed['tech_support'].mode()[0])
 
 
+# Create df copy for KNN algo imputation
+df_knn_imputed = df_imputed.copy(deep=True)
+
 # Encode all categorical values to numeric for KNN imputation process
 # Create a loop to encode all categorical columns
 oedict = {}
-cat_cols = list(df_imputed.select_dtypes(include='object'))
+cat_cols = list(df_knn_imputed.select_dtypes(include='object'))
 
 # Loop through categorical columns and encode them with numeric values
 for col_name in cat_cols:
     oedict[col_name] = OrdinalEncoder()
-    col = df_imputed[col_name]
+    col = df_knn_imputed[col_name]
     col_notnulls = col[col.notnull()]
     reshaped_vals = col_notnulls.values.reshape(-1, 1)
     encoded_vals = oedict[col_name].fit_transform(reshaped_vals)
-    df_imputed.loc[col.notnull(), col_name] = np.squeeze(encoded_vals)
+    df_knn_imputed.loc[col.notnull(), col_name] = np.squeeze(encoded_vals)
 
 # Create visual plot of colums to be imputed
-compare_imputes = df_imputed[['children','age','income','tenure','bandwidth_gb_yr']]
+compare_imputes = df_knn_imputed[['children','age','income','tenure','bandwidth_gb_yr']]
 compare_imputes.hist(figsize=(15,12));
 
 # Impute missing values with KNN algorithm
 knn_imputer = KNN()
-df_imputed.iloc[:, :] = np.round(knn_imputer.fit_transform(df_imputed))
+df_knn_imputed.iloc[:, :] = np.round(knn_imputer.fit_transform(df_knn_imputed))
 
 # Create visual plot of colums after imputation for comparison
-compare_imputes = df_imputed[['children','age','income','tenure','bandwidth_gb_yr']]
+compare_imputes = df_knn_imputed[['children','age','income','tenure','bandwidth_gb_yr']]
 compare_imputes.hist(figsize=(15,12));
 
 # Inverse transform the categorical values back to their original values
 for col_name in cat_cols:
-    reshaped = df_imputed[col_name].values.reshape(-1, 1)
-    df_imputed[col_name] = oedict[col_name].inverse_transform(reshaped)
+    reshaped = df_knn_imputed[col_name].values.reshape(-1, 1)
+    df_knn_imputed[col_name] = oedict[col_name].inverse_transform(reshaped)
+
+
+# Update df_imputed dataset with knn updated columns
+for col in compare_imputes:
+    df_imputed[col] = compare_imputes[col]
+
 
 # Confirm all nulls removed from dataset
-msno.matrix(df_imputed)
+msno.matrix(df_knn_imputed)
 df_imputed.isnull().sum()
 df_imputed.info()
+
+
+
+# %%
+# Cleanup column dtypes after missing values treatments
+
+# zip from int to char(5) with leading '0's
+df_imputed
+
 
 
 
@@ -195,28 +213,24 @@ df_imputed.info()
 # %%
 # Detecting and Treating Outliers
 
+# Use the .describe method to visualize the core statistics for each numeric attribute in the data set
+df_imputed.describe()
 
-# # Use the .describe method to visualize the core statistics for each numeric attribute in the data set
-# numeric_subset_df.describe()
+# Boxplot for income
+plt.figure(figsize = (15,3))
+boxplot = sb.boxplot(x='income', data=raw_df)
 
-# # View histograms of numeric attribures to visually identify potential outliers - check for extreme values beyond skew
-# numeric_subset_df.hist(figsize=(15,15));
+# Boxplot for monthly_charge
+plt.figure(figsize = (15,3))
+boxplot = sb.boxplot(x='monthly_charge', data=raw_df)
 
-# # Boxplot for income
-# plt.figure(figsize = (15,3))
-# boxplot = sb.boxplot(x='income', data=raw_df)
+# Boxplot for support_reqs_total
+plt.figure(figsize = (15,3))
+boxplot = sb.boxplot(x='support_reqs_total', data=raw_df)
 
-# # Boxplot for monthly_charge
-# plt.figure(figsize = (15,3))
-# boxplot = sb.boxplot(x='monthly_charge', data=raw_df)
-
-# # Boxplot for support_reqs_total
-# plt.figure(figsize = (15,3))
-# boxplot = sb.boxplot(x='support_reqs_total', data=raw_df)
-
-# # Boxplot for equip_failure_yr
-# plt.figure(figsize = (15,3))
-# boxplot = sb.boxplot(x='equip_failure_yr', data=raw_df)
+# Boxplot for equip_failure_yr
+plt.figure(figsize = (15,3))
+boxplot = sb.boxplot(x='equip_failure_yr', data=raw_df)
 
 
 
@@ -235,6 +249,9 @@ df_imputed.info()
 
 # # Create copy of data set to perform remaining cleaning steps on
 # clean_df = raw_df.copy(deep=True)
+
+# # children, age, tenure from float to int
+# clean_df[['children', 'age', 'tenure']] = clean_df[['children', 'age', 'tenure']].astype(int)
 
 # # Convert zip code to string and fill missing chars with '0'
 # clean_df.zip = clean_df.zip.astype(str).str[:-2].str.pad(5,fillchar='0')
