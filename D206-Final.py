@@ -73,14 +73,14 @@ col_renaming = {'CaseOrder': 'case_order',
                 'Tenure': 'tenure',
                 'MonthlyCharge': 'monthly_charge',
                 'Bandwidth_GB_Year': 'bandwidth_gb_yr',
-                'item1': 'timely_resp',
-                'item2': 'timely_fix',
-                'item3': 'timely_replace',
-                'item4': 'reliability',
-                'item5': 'options',
-                'item6': 'respectful',
-                'item7': 'courteous',
-                'item8': 'active_listening'}
+                'item1': 'surv_timely_resp',
+                'item2': 'surv_timely_fix',
+                'item3': 'surv_timely_replace',
+                'item4': 'surv_reliability',
+                'item5': 'surv_options',
+                'item6': 'surv_respectful',
+                'item7': 'surv_courteous',
+                'item8': 'surv_active_listening'}
 
 raw_df.rename(columns=col_renaming, inplace=True)
 print(raw_df.info())
@@ -131,94 +131,63 @@ column_names = ['city', 'state', 'zip', 'job', 'children', 'gender', 'employment
 duplicate_rows = raw_df.duplicated(subset=column_names, keep=False)
 raw_df[duplicate_rows]
 
-
-
 # %%
 # Detecting and Treating Missing Values
-
 
 # Display null values across data set 
 msno.matrix(raw_df)
 raw_df.isnull().sum()
 
-# Create a subset of the data set with only the numeric columns for further numeric analysis (outliers and missing data)
-numeric_subset_df = raw_df[['latitude', 'longitude', 'population', 'children', 'age', 'income', 'outage_sec_wk', 
-                            'email_contact_yr', 'support_reqs_total', 'equip_failure_yr', 'tenure', 'monthly_charge', 
-                            'bandwidth_gb_yr']]
-print(numeric_subset_df.head())
-
-# View histograms of numeric attribures to visually identify potentially misleading values 
+# View histograms of numeric attributes to visually identify potentially misleading values 
 # i.e. chosen default value for missing data
-numeric_subset_df.hist(figsize=(15,15));
+raw_df.hist(figsize=(15,15));
 
 # Check outage_sec_wk to see if the bi-nomial distribution is due to a misleading value 
 # i.e. chosen default value for missing data
-print(numeric_subset_df['outage_sec_wk'].value_counts().head(10))
+print(raw_df['outage_sec_wk'].value_counts().head(10))
+
+# Fill in missing categorical values using univariate .mode()[0]
+df_imputed = raw_df.copy(deep=True)
+df_imputed['cust_is_techie'] = df_imputed['cust_is_techie'].fillna(df_imputed['cust_is_techie'].mode()[0])
+df_imputed['phone_service'] = df_imputed['phone_service'].fillna(df_imputed['phone_service'].mode()[0])
+df_imputed['tech_support'] = df_imputed['tech_support'].fillna(df_imputed['tech_support'].mode()[0])
 
 
+# Encode all categorical values to numeric for KNN imputation process
+# Create a loop to encode all categorical columns
+oedict = {}
+cat_cols = list(df_imputed.select_dtypes(include='object'))
 
+# Loop through categorical columns and encode them with numeric values
+for col_name in cat_cols:
+    oedict[col_name] = OrdinalEncoder()
+    col = df_imputed[col_name]
+    col_notnulls = col[col.notnull()]
+    reshaped_vals = col_notnulls.values.reshape(-1, 1)
+    encoded_vals = oedict[col_name].fit_transform(reshaped_vals)
+    df_imputed.loc[col.notnull(), col_name] = np.squeeze(encoded_vals)
 
+# Create visual plot of colums to be imputed
+compare_imputes = df_imputed[['children','age','income','tenure','bandwidth_gb_yr']]
+compare_imputes.hist(figsize=(15,12));
 
+# Impute missing values with KNN algorithm
+knn_imputer = KNN()
+df_imputed.iloc[:, :] = np.round(knn_imputer.fit_transform(df_imputed))
 
-# %% 
-# Treating Categorical Missing Values
+# Create visual plot of colums after imputation for comparison
+compare_imputes = df_imputed[['children','age','income','tenure','bandwidth_gb_yr']]
+compare_imputes.hist(figsize=(15,12));
 
+# Inverse transform the categorical values back to their original values
+for col_name in cat_cols:
+    reshaped = df_imputed[col_name].values.reshape(-1, 1)
+    df_imputed[col_name] = oedict[col_name].inverse_transform(reshaped)
 
-#First, encode all categorical values to numeric for imputation
-# Create an empty dictionary ordinal_enc_dict
-ordinal_enc_dict = {}
-
-for col_name in users:
-    # Create Ordinal encoder for col
-    ordinal_enc_dict[col_name] = OrdinalEncoder()
-    col = users[col_name]
-    
-    # Select non-null values of col
-    col_not_null = col[col.notnull()]
-    reshaped_vals = col_not_null.values.reshape(-1, 1)
-    encoded_vals = ordinal_enc_dict[col_name].fit_transform(reshaped_vals)
-    
-    # Store the values to non-null values of the column in users
-    users.loc[col.notnull(), col_name] = np.squeeze(encoded_vals)
-
-
-# Impute the encoded categories & transform back to category values
-# Create KNN imputer
-KNN_imputer = KNN()
-
-# Impute and round the users DataFrame
-users.iloc[:, :] = np.round(KNN_imputer.fit_transform(users))
-
-# Loop over the column names in users
-for col_name in users:
-    
-    # Reshape the data
-    reshaped = users[col_name].values.reshape(-1, 1)
-    
-    # Perform inverse transform of the ordinally encoded columns
-    users[col_name] = ordinal_enc_dict[col_name].inverse_transform(reshaped)
-
-
-
-
-
-# If using multiple imputation methods, compare plots to find best method
-# Plot graphs of imputed DataFrames and the complete case
-diabetes_cc['Skin_Fold'].plot(kind='kde', c='red', linewidth=3)
-diabetes_mean_imputed['Skin_Fold'].plot(kind='kde')
-diabetes_knn_imputed['Skin_Fold'].plot(kind='kde')
-diabetes_mice_imputed['Skin_Fold'].plot(kind='kde')
-
-# Create labels for the four DataFrames
-labels = ['Baseline (Complete Case)', 'Mean Imputation', 'KNN Imputation', 'MICE Imputation']
-plt.legend(labels)
-
-# Set the x-label as Skin Fold
-plt.xlabel('Skin Fold')
-
-plt.show()
-
-
+# Confirm all nulls removed from dataset
+msno.matrix(df_imputed)
+df_imputed.isnull().sum()
+df_imputed.info()
 
 
 
@@ -227,29 +196,27 @@ plt.show()
 # Detecting and Treating Outliers
 
 
-# Use the .describe method to visualize the core statistics for each numeric attribute in the data set
-numeric_subset_df.describe()
+# # Use the .describe method to visualize the core statistics for each numeric attribute in the data set
+# numeric_subset_df.describe()
 
-# View histograms of numeric attribures to visually identify potential outliers - check for extreme values beyond skew
-numeric_subset_df.hist(figsize=(15,15));
+# # View histograms of numeric attribures to visually identify potential outliers - check for extreme values beyond skew
+# numeric_subset_df.hist(figsize=(15,15));
 
-# Boxplot for income
-plt.figure(figsize = (15,3))
-boxplot = sb.boxplot(x='income', data=raw_df)
+# # Boxplot for income
+# plt.figure(figsize = (15,3))
+# boxplot = sb.boxplot(x='income', data=raw_df)
 
-# Boxplot for monthly_charge
-plt.figure(figsize = (15,3))
-boxplot = sb.boxplot(x='monthly_charge', data=raw_df)
+# # Boxplot for monthly_charge
+# plt.figure(figsize = (15,3))
+# boxplot = sb.boxplot(x='monthly_charge', data=raw_df)
 
-# Boxplot for support_reqs_total
-plt.figure(figsize = (15,3))
-boxplot = sb.boxplot(x='support_reqs_total', data=raw_df)
+# # Boxplot for support_reqs_total
+# plt.figure(figsize = (15,3))
+# boxplot = sb.boxplot(x='support_reqs_total', data=raw_df)
 
-# Boxplot for equip_failure_yr
-plt.figure(figsize = (15,3))
-boxplot = sb.boxplot(x='equip_failure_yr', data=raw_df)
-
-
+# # Boxplot for equip_failure_yr
+# plt.figure(figsize = (15,3))
+# boxplot = sb.boxplot(x='equip_failure_yr', data=raw_df)
 
 
 
@@ -260,19 +227,21 @@ boxplot = sb.boxplot(x='equip_failure_yr', data=raw_df)
 
 
 
-# %%
-# Other Data Cleaning Tasks to prepare data set for analysis
 
 
-# Create copy of data set to perform remaining cleaning steps on
-clean_df = raw_df.copy(deep=True)
+# # %%
+# # Other Data Cleaning Tasks to prepare data set for analysis
 
-# Convert zip code to string and fill missing chars with '0'
-clean_df.zip = clean_df.zip.astype(str).str[:-2].str.pad(5,fillchar='0')
-clean_df.zip.sample(20)
 
-# Replace any invalid zip codes with NaN
-clean_df.zip = clean_df.zip.replace('0000n', np.nan)
+# # Create copy of data set to perform remaining cleaning steps on
+# clean_df = raw_df.copy(deep=True)
+
+# # Convert zip code to string and fill missing chars with '0'
+# clean_df.zip = clean_df.zip.astype(str).str[:-2].str.pad(5,fillchar='0')
+# clean_df.zip.sample(20)
+
+# # Replace any invalid zip codes with NaN
+# clean_df.zip = clean_df.zip.replace('0000n', np.nan)
 
 
 
