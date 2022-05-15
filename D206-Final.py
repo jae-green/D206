@@ -13,13 +13,12 @@ import matplotlib
 from matplotlib import pyplot as plt
 import missingno as msno
 import scipy.stats as stats
-from scipy.stats import norm, skew
-import seaborn as sb
-import statsmodels.api as sm
+import seaborn as sns
 from fancyimpute import KNN
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder, OrdinalEncoder
-from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.decomposition import PCA
+
 
 # Read in the Churn Data Set
 raw_df = pd.read_csv('churn_raw_data.csv')
@@ -134,9 +133,10 @@ raw_df[duplicate_rows]
 # %%
 # Detecting and Treating Missing Values
 
-# Display null values across data set 
-msno.matrix(raw_df)
+# Visualize missing values across data set 
 raw_df.isnull().sum()
+msno.matrix(raw_df);
+msno.heatmap(raw_df);
 
 # View histograms of numeric attributes to visually identify potentially misleading values 
 # i.e. chosen default value for missing data
@@ -219,18 +219,19 @@ print('Total outliers in the support_reqs_total column: ', income_outliers_count
 print(income_outliers_count,'is approximately', round(income_outliers_count/df_count,4),'% of the dataset.')
 print(income_outliers.shape[0])
 plt.hist(df_no_outliers['zscore_income']);
-plt.figure(figsize = (15,3))
 
-# Exclude the 159 rows of income outliers from primary dataset, placing them in a separate dataset
+# Exclude the rows of income outliers from primary dataset, placing them in a separate dataset
 df_excluded_outliers = df_no_outliers.query('zscore_income > 3 | zscore_income < -3')
 df_no_outliers = df_no_outliers[df_no_outliers['zscore_income'] < 3]
 df_no_outliers = df_no_outliers[df_no_outliers['zscore_income'] > -3]
+df_no_outliers.drop(['zscore_income'], axis=1, inplace=True)
 df_no_outliers.info()
 
 
 # Boxplot for monthly_charge
 plt.figure(figsize = (15,3))
-boxplot = sb.boxplot(x='monthly_charge', data=df_no_outliers)
+boxplot = sns.boxplot(x='monthly_charge', data=df_no_outliers)
+
 
 # Check for outliers in support_reqs_total - zscore & boxplot
 df_no_outliers['zscore_support_reqs'] = stats.zscore(df_no_outliers['support_reqs_total'])
@@ -240,12 +241,13 @@ df_count = df_no_outliers.shape[0]
 print('Total outliers in the support_reqs_total column: ', spt_reqs_count)
 print(spt_reqs_count,'is approximately', round(spt_reqs_count/df_count,4)*100,'% of the dataset.')
 plt.figure(figsize = (15,3))
-boxplot = sb.boxplot(x='zscore_support_reqs', data=df_no_outliers)
+boxplot = sns.boxplot(x='zscore_support_reqs', data=df_no_outliers)
 # Exclude the rows of support_reqs_total outliers from primary dataset, placing them in a separate dataset
 df_excluded_outliers = df_excluded_outliers.append(spt_reqs_outliers)
 df_excluded_outliers.shape[0]
 df_no_outliers.drop(df_no_outliers[df_no_outliers['zscore_support_reqs'] > 3].index, inplace=True)
 df_no_outliers.drop(df_no_outliers[df_no_outliers['zscore_support_reqs'] < -3].index, inplace=True)
+df_no_outliers.drop(['zscore_support_reqs'], axis=1, inplace=True)
 df_no_outliers.info()
 
 
@@ -257,12 +259,13 @@ df_count = df_no_outliers.shape[0]
 print('Total outliers in the equip_failure_yr column: ', equip_fail_count)
 print(equip_fail_count,'is approximately', round(equip_fail_count/df_count,4)*100,'% of the dataset.')
 plt.figure(figsize = (15,3))
-boxplot = sb.boxplot(x='zscore_equip_fail', data=df_no_outliers)
+boxplot = sns.boxplot(x='zscore_equip_fail', data=df_no_outliers)
 # Exclude the rows of equip_failure_yr outliers from primary dataset, placing them in a separate dataset
 edf_excluded_outliers = df_excluded_outliers.append(equip_fail_outliers)
 df_excluded_outliers.shape[0]
 df_no_outliers.drop(df_no_outliers[df_no_outliers['zscore_equip_fail'] > 3].index, inplace=True)
 df_no_outliers.drop(df_no_outliers[df_no_outliers['zscore_equip_fail'] < -3].index, inplace=True)
+df_no_outliers.drop(['zscore_equip_fail'], axis=1, inplace=True)
 df_no_outliers.info()
 
 
@@ -274,7 +277,8 @@ df_count = df_no_outliers.shape[0]
 print('Total outliers in the children column: ', child_count)
 print(child_count,'is approximately', round(child_count/df_count,4)*100,'% of the dataset.')
 plt.figure(figsize = (15,3))
-boxplot = sb.boxplot(x='zscore_children', data=df_no_outliers)
+boxplot = sns.boxplot(x='zscore_children', data=df_no_outliers)
+df_no_outliers.drop(['zscore_children'], axis=1, inplace=True)
 # # Exclude the rows of equip_failure_yr outliers from primary dataset, placing them in a separate dataset
 # df_excluded_outliers = df_excluded_outliers.append(child_outliers)
 # df_excluded_outliers.shape[0]
@@ -283,6 +287,7 @@ boxplot = sb.boxplot(x='zscore_children', data=df_no_outliers)
 # df_no_outliers.info()
 
 
+df_no_outliers.hist(figsize=(15,15));
 
 
 
