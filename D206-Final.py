@@ -15,13 +15,13 @@ import missingno as msno
 import scipy.stats as stats
 import seaborn as sns
 from fancyimpute import KNN
-from sklearn.preprocessing import OrdinalEncoder
+from sklearn.preprocessing import OrdinalEncoder, LabelEncoder
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.decomposition import PCA
 
 
 # Read in the Churn Data Set
-raw_df = pd.read_csv('churn_raw_data.csv')
+raw_df = pd.read_csv('/Users/Jae/MyGit/D206 - Data Cleaning/churn_raw_data.csv')
 pd.options.display.max_columns = None
 print(raw_df.head())
 print(raw_df.info())
@@ -261,7 +261,7 @@ print(equip_fail_count,'is approximately', round(equip_fail_count/df_count,4)*10
 plt.figure(figsize = (15,3))
 boxplot = sns.boxplot(x='zscore_equip_fail', data=df_no_outliers)
 # Exclude the rows of equip_failure_yr outliers from primary dataset, placing them in a separate dataset
-edf_excluded_outliers = df_excluded_outliers.append(equip_fail_outliers)
+df_excluded_outliers = df_excluded_outliers.append(equip_fail_outliers)
 df_excluded_outliers.shape[0]
 df_no_outliers.drop(df_no_outliers[df_no_outliers['zscore_equip_fail'] > 3].index, inplace=True)
 df_no_outliers.drop(df_no_outliers[df_no_outliers['zscore_equip_fail'] < -3].index, inplace=True)
@@ -291,30 +291,67 @@ df_no_outliers.hist(figsize=(15,15));
 
 
 
+# %%
+# Other Data Cleaning Tasks to prepare data set for analysis
+
+
+# Create copy of data set to perform remaining cleaning steps on
+clean_df = df_no_outliers.copy(deep=True)
+
+# children, age, tenure from float to int
+clean_df[['children', 'age']] = clean_df[['children', 'age']].astype(int)
+
+# Convert zip code to string and fill missing chars with '0'
+clean_df.zip = clean_df.zip.astype(str).str.pad(5,fillchar='0')
+# Replace any invalid zip codes with NaN
+clean_df.zip = clean_df.zip.replace('0000n', np.nan)
+
+clean_df.zip.sample(20)
+
+# Combine age and tenure/12 to create a current_age variable for improved accuracy
+clean_df['current_age'] = clean_df['age']+(clean_df['tenure']/12).astype(int)
+
+clean_df.info()
 
 
 
 
-# # %%
-# # Other Data Cleaning Tasks to prepare data set for analysis
+# %%
+# Re-express a categorical variables numerically
 
+# Re-express the education variable by ordinal encoding
+print(clean_df.education.unique())
 
-# # Create copy of data set to perform remaining cleaning steps on
-# clean_df = raw_df.copy(deep=True)
+clean_df['education_numeric'] = clean_df['education']
 
-# # children, age, tenure from float to int
-# clean_df[['children', 'age', 'tenure']] = clean_df[['children', 'age', 'tenure']].astype(int)
+edu_dict = {"education_numeric": {"No Schooling Completed":0, 
+                                  "Nursery School to 8th Grade": 1,
+                                  "9th Grade to 12th Grade, No Diploma": 2,
+                                  "Regular High School Diploma": 3,
+                                  "GED or Alternative Credential": 4,
+                                  "Some College, Less than 1 Year": 5,
+                                  "Some College, 1 or More Years, No Degree": 6,
+                                  "Professional School Degree": 7,
+                                  "Associate's Degree": 8,
+                                  "Bachelor's Degree": 9,
+                                  "Master's Degree": 10,
+                                  "Doctorate Degree": 11}}
+clean_df.replace(edu_dict, inplace=True)
 
-# # Convert zip code to string and fill missing chars with '0'
-# clean_df.zip = clean_df.zip.astype(str).str[:-2].str.pad(5,fillchar='0')
-# clean_df.zip.sample(20)
+# Re-express all boolean (Yes/No) values with LabelEncoder
+bool_cols = ['churn', 'portable_modem', 'tablet', 'multi_ph_lines', 
+             'online_security','online_backup', 'device_protection',
+             'tech_support', 'streaming_tv','streaming_movies', 'paperless_bill']
+label_encoder = LabelEncoder() 
 
-# # Replace any invalid zip codes with NaN
-# clean_df.zip = clean_df.zip.replace('0000n', np.nan)
+for col in bool_cols:
+    col_name = col + '_num'
+    clean_df[col_name] = label_encoder.fit_transform(clean_df[col])
 
+clean_df.info()
 
-
-
+# %%
+# Apply PCA to Numerical-Continuous variables
 
 
 
