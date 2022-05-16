@@ -9,14 +9,12 @@ Western Governors University
 # Import python libraries for data analysis
 import pandas as pd
 import numpy as np
-import matplotlib
 from matplotlib import pyplot as plt
 import missingno as msno
 import scipy.stats as stats
 import seaborn as sns
 from fancyimpute import KNN
-from sklearn.preprocessing import OrdinalEncoder, LabelEncoder
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import OrdinalEncoder, LabelEncoder, MinMaxScaler
 from sklearn.decomposition import PCA
 
 
@@ -114,21 +112,21 @@ print(dup_cols)
 # Drop duplicate column
 raw_df = raw_df.drop('Unnamed: 0', 1)
 # Confirm the number of columns is reduced from 52 to 51 post-deletion
-raw_df.shape
+print(raw_df.shape)
 
 # Check for identical rows across the dataset
 duplicate_rows = raw_df.duplicated(keep=False)
-raw_df[duplicate_rows]
+print(raw_df[duplicate_rows])
 
 
 # Check for duplicate customer IDs
 duplicate_rows = raw_df.duplicated(subset='cust_id', keep=False)
-raw_df[duplicate_rows]
+print(raw_df[duplicate_rows])
 
 # Check for rows that are appear identical without matching on customer ID, which could mean one customer was assigned multiple IDs
 column_names = ['city', 'state', 'zip', 'job', 'children', 'gender', 'employment', 'income', 'cust_is_techie', 'contract_term', 'monthly_charge']
 duplicate_rows = raw_df.duplicated(subset=column_names, keep=False)
-raw_df[duplicate_rows]
+print(raw_df[duplicate_rows])
 
 # %%
 # Detecting and Treating Missing Values
@@ -195,8 +193,8 @@ for col in compare_imputes:
 
 # Confirm all nulls removed from dataset
 msno.matrix(df_knn_imputed)
-df_imputed.isnull().sum()
-df_imputed.info()
+print(df_imputed.isnull().sum())
+print(df_imputed.info())
 
 
 
@@ -306,12 +304,12 @@ clean_df.zip = clean_df.zip.astype(str).str.pad(5,fillchar='0')
 # Replace any invalid zip codes with NaN
 clean_df.zip = clean_df.zip.replace('0000n', np.nan)
 
-clean_df.zip.sample(20)
+print(clean_df.zip.sample(20))
 
 # Combine age and tenure/12 to create a current_age variable for improved accuracy
 clean_df['current_age'] = clean_df['age']+(clean_df['tenure']/12).astype(int)
 
-clean_df.info()
+print(clean_df.info())
 
 
 
@@ -348,7 +346,8 @@ for col in bool_cols:
     col_name = col + '_num'
     clean_df[col_name] = label_encoder.fit_transform(clean_df[col])
 
-clean_df.info()
+print(clean_df.info())
+print(clean_df.head())
 
 # %%
 # Apply PCA to Numerical-Continuous variables
