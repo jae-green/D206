@@ -296,6 +296,9 @@ df_no_outliers.hist(figsize=(15,15));
 # Create copy of data set to perform remaining cleaning steps on
 clean_df = df_no_outliers.copy(deep=True)
 
+# Find all unique state names listed to identify the "extra 2"
+print(sorted(clean_df.state.unique()))
+
 # children, age, tenure from float to int
 clean_df[['children', 'age']] = clean_df[['children', 'age']].astype(int)
 
@@ -308,6 +311,11 @@ print(clean_df.zip.sample(20))
 
 # Combine age and tenure/12 to create a current_age variable for improved accuracy
 clean_df['current_age'] = clean_df['age']+(clean_df['tenure']/12).astype(int)
+
+# Remove negative values from outage_sec_wk
+print(clean_df.query('outage_sec_wk < 0'))
+clean_df.drop(clean_df[clean_df.outage_sec_wk < 0].index, inplace=True)
+print(clean_df.query('outage_sec_wk > 0'))
 
 print(clean_df.info())
 
@@ -381,9 +389,12 @@ plt.plot(pca.explained_variance_ratio_)
 plt.show()
 
 # %%
-# Export cleaned / prepped dataset to CSV for submission
+# Export final datasets to CSV for submission
 clean_df.to_csv(r'/Users/Jae/MyGit/D206 - Data Cleaning/clean_df.csv')
 final_pca_df.to_csv(r'/Users/Jae/MyGit/D206 - Data Cleaning/final_pca_df.csv')
+df_excluded_outliers.to_csv(r'/Users/Jae/MyGit/D206 - Data Cleaning/df_excluded_outliers.csv')
+
+
 
 
 
