@@ -320,7 +320,7 @@ print(clean_df.info())
 # Re-express the education variable by ordinal encoding
 print(clean_df.education.unique())
 
-clean_df['education_numeric'] = clean_df['education']
+clean_df['education_num'] = clean_df['education']
 
 edu_dict = {"education_numeric": {"No Schooling Completed":0, 
                                   "Nursery School to 8th Grade": 1,
@@ -352,12 +352,38 @@ print(clean_df.head())
 # %%
 # Apply PCA to Numerical-Continuous variables
 
+# Create separate group/list of numerical-continuous varuables for PCA process
+pca_df = clean_df[['latitude', 'longitude', 'income', 'outage_sec_wk', 
+        'tenure', 'monthly_charge', 'bandwidth_gb_yr']].copy(deep=True)
 
+# Apply MinMaxScaler to scale pca_df for PCA use
+minmax_scaler = MinMaxScaler()
+pca_scaled_df = pd.DataFrame(minmax_scaler.fit_transform(pca_df), 
+                             columns = pca_df.columns.values)
 
+print(pca_scaled_df.describe())
 
-# # %%
-# # Export cleaned / prepped dataset to CSV for submission
-# df.to_csv(r'path/filename.csv')
+# Apply PCA to pca_scaled_df
+pca = PCA()
+pcs = pca.fit_transform(pca_scaled_df)
+final_pca_df = pd.DataFrame(pcs, columns=['PC1', 'PC2', 'PC3', 'PC4', 
+                                          'PC5', 'PC6', 'PC7'])
+
+# View the loadings matrix
+pca_loadings = pd.DataFrame(pca.components_.T, 
+                columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5', 'PC6', 'PC7'],
+                index=pca_scaled_df.columns)
+
+print(pca_loadings)
+print('Variance per component:', pca.explained_variance_ratio_)
+
+plt.plot(pca.explained_variance_ratio_)
+plt.show()
+
+# %%
+# Export cleaned / prepped dataset to CSV for submission
+clean_df.to_csv(r'/Users/Jae/MyGit/D206 - Data Cleaning/clean_df.csv')
+final_pca_df.to_csv(r'/Users/Jae/MyGit/D206 - Data Cleaning/final_pca_df.csv')
 
 
 
