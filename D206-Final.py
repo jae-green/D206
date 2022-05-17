@@ -386,6 +386,9 @@ print(pca_loadings)
 print('Variance per component:', pca.explained_variance_ratio_)
 
 plt.plot(pca.explained_variance_ratio_)
+plt.title('Variance of Principle Components')
+plt.xlabel('Principle Components')
+plt.ylabel('Amount of Variance')
 plt.show()
 
 # %%
@@ -393,18 +396,4 @@ plt.show()
 clean_df.to_csv(r'/Users/Jae/MyGit/D206 - Data Cleaning/clean_df.csv')
 final_pca_df.to_csv(r'/Users/Jae/MyGit/D206 - Data Cleaning/final_pca_df.csv')
 df_excluded_outliers.to_csv(r'/Users/Jae/MyGit/D206 - Data Cleaning/df_excluded_outliers.csv')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
